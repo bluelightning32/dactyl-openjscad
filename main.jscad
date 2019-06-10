@@ -1397,12 +1397,32 @@ function screw_hole() {
     cylinder({r: 1.5, h: 60, center: true, fn: wall_sphere_n}));
 }
 
-function screw_holes() {
+function screw_holes(params) {
   console.log("screw_holes");
-  return union(
-    key_place(4 + 1/2, 1/2, screw_hole()),
-    key_place(4 + 1/2, 3 + 1/2, screw_hole()),
-    thumb_place(2, -1/2, screw_hole()));
+  return union(Array.from(function*() {
+    yield key_place(4 + 1/2, 1/2, screw_hole());
+    yield key_place(4 + 1/2, 3 + 1/2, screw_hole());
+    yield thumb_place(2, -1/2, screw_hole());
+
+    if (params.extra_screw) {
+      yield key_place(0 + 1/2, 1 + 1/2, screw_hole());
+    }
+  }()));
+}
+
+function led_hole() {
+  return color([0, 0, 1], translate([0, 0, 7/4],
+    cylinder({r1: 1.6, r2: 1.5, h: 4, center: true, fn: wall_sphere_n})));
+}
+
+function led_holes() {
+  console.log("led_holes");
+  return union(Array.from(function*() {
+    for (const column of columns) {
+      yield key_place(column, 1/2,
+        led_hole());
+    }
+  }()));
 }
 
 function circuit_cover(width, length, height) {
@@ -1545,7 +1565,7 @@ function usb_cutout() {
 ** Final Export **
 *****************/
 
-function dactyl_bottom_right() {
+function dactyl_bottom_right(params) {
   return difference(
     union(
       teensy_cover(),
@@ -1556,11 +1576,11 @@ function dactyl_bottom_right() {
         teensy_cover(),
         trrs_cutout(),
         translate([0, 0, -5], cube({size: [1000, 1000, 10], center: true})),
-        screw_holes())),
+        screw_holes(params))),
     usb_cutout());
 }
 
-function dactyl_bottom_left() {
+function dactyl_bottom_left(params) {
   return mirror([-1, 0, 0],
     union(
       io_exp_cover(),
@@ -1571,36 +1591,56 @@ function dactyl_bottom_left() {
         io_exp_cover(),
         trrs_cutout(),
         translate([0, 0, -5], cube({size: [1000, 1000, 10], center: true})),
-        screw_holes())));
+        screw_holes(params))));
 }
 
-function dactyl_top_right() {
-  return difference(
-    union(
-      key_holes(),
-      connectors(),
-      thumb(),
-      new_case(),
-      teensy_support()),
+function dactyl_top_right(params) {
+  let add = [
+    key_holes(),
+    connectors(),
+    thumb(),
+    new_case(),
+  ];
+  if (params.teensy_support) {
+    add.push(teensy_support());
+  }
+  let remove = [
     trrs_hole_just_circle(),
-    screw_holes());
+    screw_holes(params)];
+  if (params.led_holes) {
+    remove.push(led_holes());
+  }
+  return difference(
+    union(add),
+    ...remove);
 }
 
-function dactyl_top_left() {
+function dactyl_top_left(params) {
+  let add = [
+    key_holes(),
+    connectors(),
+    thumb(),
+    new_case()
+  ];
+  let remove = [
+    trrs_hole_just_circle(),
+    screw_holes(params)];
+  if (params.led_holes) {
+    remove.push(led_holes());
+  }
   return mirror([-1, 0, 0],
     difference(
-      union(
-        key_holes(),
-        connectors(),
-        thumb(),
-        new_case()),
-      trrs_hole_just_circle(),
-      screw_holes()));
+      union(add),
+      ...remove
+    ));
 }
 
 function getParameterDefinitions() {
   return [
     { name: 'draft', type: 'checkbox', checked: true, caption: 'Draft (non-draft takes 10 minutes)' }, 
+    { name: 'extra_screw', type: 'checkbox', checked: true, caption: 'Extended bottom screw hole' },
+    { name: 'led_holes', type: 'checkbox', checked: true, caption: 'Push holes for leds' },
+    { name: 'teensy_support', type: 'checkbox', checked: false, caption: 'Add support for teensy board' },
     { name: 'part', type: 'choice', caption: 'Part',
       values: [
         "dactyl_bottom_right",
@@ -1623,12 +1663,12 @@ function main(params) {
   gl_vec3();
   switch (params.part) {
     case "dactyl_bottom_right":
-      return dactyl_bottom_right();
+      return dactyl_bottom_right(params);
     case "dactyl_bottom_left":
-      return dactyl_bottom_left();
+      return dactyl_bottom_left(params);
     case "dactyl_top_right":
-      return dactyl_top_right();
+      return dactyl_top_right(params);
     case "dactyl_top_left":
-      return dactyl_top_left();
+      return dactyl_top_left(params);
   }
 }
