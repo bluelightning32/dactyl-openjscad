@@ -234,6 +234,29 @@ const plate_thickness = 4;
 const mount_width = keyswitch_width + 3;
 const mount_height = keyswitch_height + 3;
 
+function old_single_plate() {
+  const top_wall = translate(
+    [0, 1.5/2 + keyswitch_height/2, plate_thickness/2],
+    cube({size: [keyswitch_width + 3, 1.5, plate_thickness], center: true}));
+
+  const left_wall = translate(
+    [1.5/2 + keyswitch_width/2, 0, plate_thickness/2],
+    cube({size: [1.5, keyswitch_height + 3, plate_thickness], center: true}));
+
+  const side_nub = quickhull3d(
+    translate(
+      [1.5/2 + keyswitch_width/2, 0, plate_thickness/2],
+      cube({size: [1.5, 2.75, plate_thickness], center: true})),
+    translate([keyswitch_width/2, 0, 1],
+      rotate(Math.PI/2*180/Math.PI, [1, 0, 0],
+        cylinder({r: 1, h: 2.75, center: true, fn: draft_mode ? 10 : 30}))));
+
+  const plate_half = union(top_wall, left_wall, side_nub);
+  return union(
+    plate_half,
+    mirror([0, 1, 0], mirror([1, 0, 0], plate_half)));
+}
+
 const alps_width = 15.6;
 const alps_notch_width = 15.5;
 const alps_notch_height = 1;
@@ -248,6 +271,7 @@ function single_plate() {
             cube({size: [1.5, keyswitch_height + 3, plate_thickness], center: true})),
         translate([1.5/2 + alps_notch_width/2, 0, plate_thickness - alps_notch_height/2],
             cube({size: [1.5, keyswitch_height + 3, 1.0], center: true})));
+
     const plate_half = union(top_wall, left_wall);
     return union(
         plate_half,
@@ -316,14 +340,15 @@ function case_place(column, row, shape) {
     rotate(Math.PI/12*180/Math.PI, [0, 1, 0], placed_shape));
 }
 
-function key_holes() {
+function key_holes(params) {
   console.log("key_holes");
   return union(Array.from(
     function*() {
+      const plate = params.key_switch == "cherry" ?  old_single_plate() : single_plate();
       for (const column of columns) {
         for (const row of rows) {
           if (column !== 0 || row != 4) {
-           yield key_place(column, row, single_plate());
+           yield key_place(column, row, plate);
           }
         }
       }
@@ -361,6 +386,11 @@ function web_post_br() {
 
 function connectors() {
   console.log("connectors");
+  const local_web_post_tl = web_post_tl();
+  const local_web_post_tr = web_post_tr();
+  const local_web_post_bl = web_post_bl();
+  const local_web_post_br = web_post_br();
+
   return union(Array.from(function*() {
     // Row connections
     for (const column of columns.slice(0, -1)) {
@@ -368,10 +398,10 @@ function connectors() {
         if (column === 0 && row == 4)
           continue;
         yield triangle_hulls(
-          key_place(column + 1, row, web_post_tl()),
-          key_place(column, row, web_post_tr()),
-          key_place(column + 1, row, web_post_bl()),
-          key_place(column, row, web_post_br()));
+          key_place(column + 1, row, local_web_post_tl),
+          key_place(column, row, local_web_post_tr),
+          key_place(column + 1, row, local_web_post_bl),
+          key_place(column, row, local_web_post_br));
       }
     }
 
@@ -381,10 +411,10 @@ function connectors() {
         if (column === 0 && row == 3)
           continue;
         yield triangle_hulls(
-          key_place(column, row, web_post_bl()),
-          key_place(column, row, web_post_br()),
-          key_place(column, row + 1, web_post_tl()),
-          key_place(column, row + 1, web_post_tr()));
+          key_place(column, row, local_web_post_bl),
+          key_place(column, row, local_web_post_br),
+          key_place(column, row + 1, local_web_post_tl),
+          key_place(column, row + 1, local_web_post_tr));
       }
     }
 
@@ -394,10 +424,10 @@ function connectors() {
         if (column === 0 && row == 3)
           continue;
         yield triangle_hulls(
-          key_place(column, row, web_post_br()),
-          key_place(column, row + 1, web_post_tr()),
-          key_place(column + 1, row, web_post_bl()),
-          key_place(column + 1, row + 1, web_post_tl()));
+          key_place(column, row, local_web_post_br),
+          key_place(column, row + 1, local_web_post_tr),
+          key_place(column + 1, row, local_web_post_bl),
+          key_place(column + 1, row + 1, local_web_post_tl));
       }
     }
   }()));
@@ -555,9 +585,10 @@ function thumb_connectors() {
 
 function thumb() {
   console.log("thumb");
+  const plate = params.key_switch == "cherry" ?  old_single_plate() : single_plate();
   return union(
     thumb_connectors(),
-    thumb_layout(rotate(Math.PI/2*180/Math.PI, [0, 0, 1], single_plate())),
+    thumb_layout(rotate(Math.PI/2*180/Math.PI, [0, 0, 1], plate)),
     thumb_place(0, -1/2, double_plates()),
     thumb_place(1, -1/2, double_plates()));
 }
@@ -1596,7 +1627,7 @@ function dactyl_bottom_left(params) {
 
 function dactyl_top_right(params) {
   let add = [
-    key_holes(),
+    key_holes(params),
     connectors(),
     thumb(),
     new_case(),
@@ -1617,7 +1648,7 @@ function dactyl_top_right(params) {
 
 function dactyl_top_left(params) {
   let add = [
-    key_holes(),
+    key_holes(params),
     connectors(),
     thumb(),
     new_case()
@@ -1641,6 +1672,16 @@ function getParameterDefinitions() {
     { name: 'extra_screw', type: 'checkbox', checked: true, caption: 'Extended bottom screw hole' },
     { name: 'led_holes', type: 'checkbox', checked: true, caption: 'Push holes for leds' },
     { name: 'teensy_support', type: 'checkbox', checked: false, caption: 'Add support for teensy board' },
+    { name: 'key_switch', type: 'choice', caption: 'key switch',
+      values: [
+        "cherry",
+        "alps",
+        ],
+      captions: [
+        "cherry",
+        "alps",
+      ],
+      initial: dactyl_bottom_right },
     { name: 'part', type: 'choice', caption: 'Part',
       values: [
         "dactyl_bottom_right",
