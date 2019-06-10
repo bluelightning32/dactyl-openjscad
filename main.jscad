@@ -708,6 +708,16 @@ function front_wall() {
   const top_cover = function(x_start, x_end, y_start, y_end) {
     return top_case_cover(place, wall_sphere_top_front(), x_start, x_end, y_start, y_end, local_wall_step);
   };
+  const top_cover_edge = function(x_start, x_end, y) {
+    const sphere = wall_sphere_top_front();
+    return tree_union(Array.from(function*() {
+      for (const x of range_inclusive(x_start, x_end - step, step)) {
+          yield quickhull3d(
+            place(x, y, sphere),
+            place(x + step, y, sphere));
+      }
+    }()));
+  };
 
   return tree_union(Array.from(function*() {
     for (const x of range_inclusive(0.7, right_wall_column - step, step)) {
@@ -725,6 +735,10 @@ function front_wall() {
     }
     yield top_cover(0.5, 1.7, 3.6, 4);
     yield top_cover(1.59, 2.41, 3.35, 4); // was 3.32
+    yield quickhull3d(
+        top_cover_edge(1.59, 2.41, 3.35),
+        translate([0, 0, -1.5], key_place(2, 4 + 1/4, web_post_bl())),
+        translate([0, 0, -1.5], key_place(2, 4 + 1/4, web_post_br())));
     yield top_cover(2.39, 3.41, 3.6, 4);
 
     for (const x of range(2, 5)) {
