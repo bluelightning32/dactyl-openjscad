@@ -718,20 +718,22 @@ function front_wall() {
       }
     }()));
   };
+  const local_wall_sphere_top_front = wall_sphere_top_front();
+  const local_wall_sphere_bottom_front = wall_sphere_bottom_front();
 
   return tree_union(Array.from(function*() {
     for (const x of range_inclusive(0.7, right_wall_column - step, step)) {
       yield quickhull3d(
-        place(x, 4, wall_sphere_top_front()),
-        place(x + step, 4, wall_sphere_top_front()),
-        place(x, 4, wall_sphere_bottom_front()),
-        place(x + step, 4, wall_sphere_bottom_front()));
+        place(x, 4, local_wall_sphere_top_front),
+        place(x + step, 4, local_wall_sphere_top_front),
+        place(x, 4, local_wall_sphere_bottom_front),
+        place(x + step, 4, local_wall_sphere_bottom_front));
     }
     for (const x of range_inclusive(0.5, 0.7, draft_mode ? 0.1 : 0.01)) {
       yield quickhull3d(
-        place(x, 4, wall_sphere_top_front()),
-        place(x + step, 4, wall_sphere_top_front()),
-        place(0.7, 4, wall_sphere_bottom_front()));
+        place(x, 4, local_wall_sphere_top_front),
+        place(x + step, 4, local_wall_sphere_top_front),
+        place(0.7, 4, local_wall_sphere_bottom_front));
     }
     yield top_cover(0.5, 1.7, 3.6, 4);
     yield top_cover(1.59, 2.41, 3.35, 4); // was 3.32
@@ -743,34 +745,35 @@ function front_wall() {
 
     for (const x of range(2, 5)) {
       yield quickhull3d(
-        place(x - 1/2, 4, translate([0, 1, 1], wall_sphere_bottom_front())),
-        place(x + 1/2, 4, translate([0, 1, 1], wall_sphere_bottom_front())),
+        place(x - 1/2, 4, translate([0, 1, 1], local_wall_sphere_bottom_front)),
+        place(x + 1/2, 4, translate([0, 1, 1], local_wall_sphere_bottom_front)),
         key_place(x, 4, web_post_bl()),
         key_place(x, 4, web_post_br()));
       yield quickhull3d(
-        place(x - 1/2, 4, translate([0, 1, 1], wall_sphere_bottom_front())),
+        place(x - 1/2, 4, translate([0, 1, 1], local_wall_sphere_bottom_front)),
         key_place(x, 4, web_post_bl()),
         key_place(x - 1, 4, web_post_br()));
     }
     yield quickhull3d(
-      place(right_wall_column, 4, translate([0, 1, 1], wall_sphere_bottom_front())),
-      place(right_wall_column - 1, 4, translate([0, 1, 1], wall_sphere_bottom_front())),
+      place(right_wall_column, 4, translate([0, 1, 1], local_wall_sphere_bottom_front)),
+      place(right_wall_column - 1, 4, translate([0, 1, 1], local_wall_sphere_bottom_front)),
       key_place(5, 4, web_post_bl()),
       key_place(5, 4, web_post_br()));
     yield quickhull3d(
-      place(4 + 1/2, 4, translate([0, 1, 1,], wall_sphere_bottom_front())),
-      place(right_wall_column - 1, 4, translate([0, 1, 1], wall_sphere_bottom_front())),
+      place(4 + 1/2, 4, translate([0, 1, 1,], local_wall_sphere_bottom_front)),
+      place(right_wall_column - 1, 4, translate([0, 1, 1], local_wall_sphere_bottom_front)),
       key_place(4, 4, web_post_br()),
       key_place(5, 4, web_post_bl()));
     yield quickhull3d(
-      place(0.7, 4, translate([0, 1, 1], wall_sphere_bottom_front())),
-      place(1.7, 4, translate([0, 1, 1], wall_sphere_bottom_front())),
+      place(0.7, 4, translate([0, 1, 1], local_wall_sphere_bottom_front)),
+      place(1.7, 4, translate([0, 1, 1], local_wall_sphere_bottom_front)),
       key_place(1, 4, web_post_bl()),
       key_place(1, 4, web_post_br()));
   }()));
 }
 
 function back_wall() {
+  console.log("back_wall");
   const step = wall_step;
   const wall_sphere_top_backtep = 0.05;
   const wall_sphere_top_backtep_x = draft_mode ? 0.2 : wall_sphere_top_backtep;
@@ -832,6 +835,7 @@ function back_wall() {
 }
 
 function right_wall() {
+  console.log("right_wall");
   const place = case_place;
   return tree_union(Array.from(function*() {
     let side_blocks = [];
@@ -869,6 +873,7 @@ function right_wall() {
 }
 
 function left_wall() {
+  console.log("left_wall");
   const place = case_place;
   return tree_union(Array.from(function*() {
     for (const x of range_inclusive(-1, 1.6666 - wall_step, wall_step)) {
@@ -914,6 +919,7 @@ function left_wall() {
 }
 
 function thumb_back_wall() {
+  console.log("thumb_back_wall");
   const step = wall_step;
   const top_step = 0.05;
   const front_top_cover = function(x_start, x_end, y_start, y_end) {
@@ -960,6 +966,7 @@ function thumb_back_wall() {
 }
 
 function thumb_left_wall() {
+  console.log("thumb_left_wall");
   const step = wall_step;
   const place = thumb_place;
   return tree_union(Array.from(function*() {
@@ -1003,6 +1010,7 @@ function thumb_left_wall() {
 }
 
 function thumb_front_wall() {
+  console.log("thumb_front_wall");
   const step = wall_step; //0.1
   const wall_sphere_top_fronttep = 0.05; //0.05
   const place = thumb_place;
