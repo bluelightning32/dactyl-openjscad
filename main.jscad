@@ -121,6 +121,22 @@ class ForwardVertexList {
   }
 }
 
+// Create a polygon from a path that may be self intersecting
+function safe_polygon(path) {
+  try {
+    return polygon(path);
+  } catch(e) {
+    if (e.message != "Polygon is self intersecting!") {
+      throw e;
+    }
+    const split_index = path.length / 2;
+    const poly1 = path.slice(0, split_index + 1);
+    const poly2 = path.slice(split_index);
+    poly2.push(path[0]);
+    return union(safe_polygon(poly1), safe_polygon(poly2));
+  }
+}
+
 function projection(shape) {
   const start = performance.now();
   const vertex_to_objects = {};
@@ -199,18 +215,18 @@ function projection(shape) {
     }
   }
   for (let i = 0; i < converted_paths.length; i++) {
-    converted_paths[i] = polygon(converted_paths[i].flatten());
+    converted_paths[i] = safe_polygon(converted_paths[i].flatten());
   }
   return tree_union(converted_paths);
 }
 
 /* util.clj */
 function triangle_hulls(...shapes) {
-    return union(Array.from(function*() {
-        for (let i = 0; i < shapes.length - 2; i++) {
-            yield quickhull3d(shapes[i], shapes[i+1], shapes[i+2]);
-        }
-    }()));
+  return union(Array.from(function*() {
+    for (let i = 0; i < shapes.length - 2; i++) {
+      yield quickhull3d(shapes[i], shapes[i+1], shapes[i+2]);
+    }
+  }()));
 }
 
 function bottom(height, p) {
@@ -1445,22 +1461,220 @@ function bottom_plate() {
   }()));
 }
 
+function shift_hull3d(v, ...shapes) {
+  const all_shapes = shapes.slice();
+  for (s of shapes) {
+    all_shapes.push(translate(v, s));
+  }
+  return quickhull3d(...all_shapes);
+}
+
+function bottom_walls() {
+  return tree_union(Array.from(function*() {
+
+    const front_wall = tree_union(Array.from(function*() {
+      for (const x of range(2, 5)) {
+        yield shift_hull3d([0, 0, -50],
+          case_place(x - 1/2, 4, translate([0, 1, 1], wall_sphere_bottom_front())),
+          case_place(x + 1/2, 4, translate([0, 1, 1], wall_sphere_bottom_front())));
+      }
+      yield shift_hull3d([0, 0, -50],
+        case_place(right_wall_column, 4, translate([0, 1, 1], wall_sphere_bottom_front())),
+        case_place(right_wall_column - 1, 4, translate([0, 1, 1], wall_sphere_bottom_front())));
+      yield shift_hull3d([0, 0, -50],
+        case_place(4 + 1/2, 4, translate([0, 1, 1], wall_sphere_bottom_front())),
+        case_place(right_wall_column - 1, 4, translate([0, 1, 1], wall_sphere_bottom_front())));
+    }()));
+    const right_wall = tree_union(Array.from(function*() {
+      for (x of range(0, 4)) {
+        yield shift_hull3d([0, 0, -50],
+          case_place(right_wall_column, x, translate([-1, 0, 1], wall_sphere_bottom(1/2))),
+          case_place(right_wall_column, x + 1, translate([-1, 0, 1], wall_sphere_bottom(1/2))));
+      }
+      yield shift_hull3d([0, 0, -50],
+        case_place(right_wall_column, 0, translate([-1, 0, 1], wall_sphere_bottom(1/2))),
+        case_place(right_wall_column, 0.02, translate([-1, -1, 1], wall_sphere_bottom(1))));
+      yield shift_hull3d([0, 0, -50],
+        case_place(right_wall_column, 4, translate([-1, 0, 1], wall_sphere_bottom(1/2))),
+        case_place(right_wall_column, 4, translate([0, 1, 1], wall_sphere_bottom(0))));
+    }()));
+    const back_wall = tree_union(Array.from(function*() {
+      for (x of range(1, 6)) {
+        yield shift_hull3d([0, 0, -50],
+          case_place(x - 1/2, 0, translate([0, -1, 1], wall_sphere_bottom_back())),
+          case_place(x + 1/2, 0, translate([0, -1, 1], wall_sphere_bottom_back())));
+      }
+      yield shift_hull3d([0, 0, -50],
+        case_place(left_wall_column, 0, translate([1, -1, 1], wall_sphere_bottom_back())),
+        case_place(left_wall_column + 1, 0, translate([0, -1, 1], wall_sphere_bottom_back())));
+    }()));
+    const left_wall = union(Array.from(function*() {
+      const place = case_place;
+      yield shift_hull3d([0, 0, -50],
+        place(left_wall_column, 0, translate([1, -1, 1], wall_sphere_bottom_back())),
+        place(left_wall_column, 1, translate([1, 0, 1], wall_sphere_bottom_back())));
+      yield shift_hull3d([0, 0, -50],
+        place(left_wall_column, 1, translate([1, 0, 1], wall_sphere_bottom_back())),
+        place(left_wall_column, 2, translate([1, 0, 1], wall_sphere_bottom_back())));
+      yield shift_hull3d([0, 0, -50],
+        place(left_wall_column, 2, translate([1, 0, 1], wall_sphere_bottom_back())),
+        place(left_wall_column, 1.6666,  translate([1, 0, 1], wall_sphere_bottom_front())));
+    }()));
+    const thumb_back_wall = union(Array.from(function*() {
+      yield shift_hull3d([0, 0, -50],
+        thumb_place(1/2, thumb_back_y, translate([0, -1, 1], wall_sphere_bottom_back())),
+        thumb_place(3/2, thumb_back_y, translate([0, -1, 1], wall_sphere_bottom_back())));
+      yield shift_hull3d([0, 0, -50],
+        thumb_place(5/2 + 0.05, thumb_back_y, translate([1, -1, 1], wall_sphere_bottom_back())),
+        thumb_place(3/2, thumb_back_y, translate([0, -1, 1], wall_sphere_bottom_back())));
+      yield shift_hull3d([0, 0, -50],
+        thumb_place(1/2, thumb_back_y, translate([0, -1, 1], wall_sphere_bottom_back())),
+        case_place(left_wall_column, 1.6666, translate([1, 0, 1], wall_sphere_bottom_front())));
+    }()));
+    const thumb_left_wall = union(Array.from(function*() {
+      yield shift_hull3d([0, 0, -50],
+       thumb_place(thumb_left_wall_column, thumb_back_y, translate([1, -1, 1], wall_sphere_bottom_back())),
+       thumb_place(thumb_left_wall_column, 0, translate([1, 0, 1], wall_sphere_bottom_back())));
+      yield shift_hull3d([0, 0, -50],
+       thumb_place(thumb_left_wall_column, 0, translate([1, 0, 1], wall_sphere_bottom_back())));
+      yield shift_hull3d([0, 0, -50],
+       thumb_place(thumb_left_wall_column, 0, translate([1, 0, 1], wall_sphere_bottom_back())),
+       thumb_place(thumb_left_wall_column, -1, translate([1, 0, 1], wall_sphere_bottom_back())));
+      yield shift_hull3d([0, 0, -50],
+       thumb_place(thumb_left_wall_column, -1, translate([1, 0, 1], wall_sphere_bottom_back())));
+      yield shift_hull3d([0, 0, -50],
+       thumb_place(thumb_left_wall_column, -1, translate([1, 0, 1], wall_sphere_bottom_back())),
+       thumb_place(thumb_left_wall_column, -1 + 0.07, translate([1, 1, 1], wall_sphere_bottom_front())));
+    }()));
+    const thumb_front_wall = union(Array.from(function*() {
+      yield shift_hull3d([0, 0, -50],
+        thumb_place(5/2 + 0.05, thumb_front_row, translate([1, 1, 1], wall_sphere_bottom_front())),
+        thumb_place(3/2 + 0.05, thumb_front_row, translate([0, 1, 1], wall_sphere_bottom_front())));
+      yield shift_hull3d([0, 0, -50],
+        thumb_place(1/2 + 0.05, thumb_front_row, translate([0, 1, 1], wall_sphere_bottom_front())),
+        thumb_place(3/2 + 0.05, thumb_front_row, translate([0, 1, 1], wall_sphere_bottom_front())));
+      yield shift_hull3d([0, 0, -50],
+        thumb_place(thumb_right_wall, thumb_front_row, translate([-1, 1, 1], wall_sphere_bottom_front())),
+        thumb_place(1/2 + 0.05, thumb_front_row, translate([0, 1, 1], wall_sphere_bottom_front())));
+    }()));
+    const thumb_inside = union(Array.from(function*() {
+      yield shift_hull3d([0, 0, -50],
+        case_place(2 - 1/2, 4, translate([0, 1, 1], wall_sphere_bottom_front())),
+        case_place(0.7, 4, translate([0, 1, 1], wall_sphere_bottom_front())));
+
+      yield shift_hull3d([0, 0, -50],
+        thumb_place(thumb_right_wall, thumb_front_row, translate([-1, 1, 1], wall_sphere_bottom_front())),
+        case_place(0.7, 4, translate([0, 1, 1], wall_sphere_bottom_front())));
+    }()));
+    yield front_wall;
+    yield right_wall;
+    yield back_wall;
+    yield left_wall;
+    yield thumb_back_wall;
+    yield thumb_left_wall;
+    yield thumb_front_wall;
+    yield thumb_inside;
+  }()));
+}
+
+// Given a 2d polygon, remove all clockwise polygons (the holes) from it.
+function remove_holes_2d(shape) {
+  let path_ends = {};
+  let i = 0;
+  for (side of shape.sides) {
+    if (side.vertex0 in path_ends) {
+      const path = path_ends[side.vertex0];
+      path.push(side);
+      delete path_ends[side.vertex0];
+      path_ends[side.vertex1] = path;
+    } else {
+      const path = [side];
+      path_ends[side.vertex1] = path;
+    }
+  }
+  let path_starts = {};
+  for (path_end in path_ends) {
+    let path = path_ends[path_end];
+    while (true) {
+      const path_start = path[0].vertex0;
+      if (path_start != path_end && path_start in path_ends) {
+        path = path_ends[path_start].concat(path);
+        delete path_ends[path_start];
+        path_ends[path_end] = path;
+      } else {
+        break;
+      }
+    }
+  }
+  const keep = [];
+  for (path_end in path_ends) {
+    let sides = path_ends[path_end];
+    let path = sides.map(side => [side.vertex0.pos.x, side.vertex0.pos.y]);
+    if (Is2DPathCounterClockwise(path)) {
+      console.log(path);
+      keep.push(polygon(path));
+    }
+  }
+  return tree_union(keep);
+}
+
+function extended_bottom_plate() {
+  // cut off the parts of the walls that extend past 0 z.
+  const walls = difference(bottom_walls(), translate([0, 0, -100], cube({size: [200, 200, 200], center:true})));
+  // Just in case the walls aren't completely vertical, get the bottom 1mm of the walls.
+  const bottom_parameter = intersection(walls, translate([0, 0, 0.5], cube({size: [200, 200, 1], center:true})));
+  const bottom_parameter2d = projection(bottom_parameter);
+  // Fill in the parameter.
+  const base2d = remove_holes_2d(bottom_parameter2d);
+  const base = linear_extrude({ height: 1.5 }, base2d);
+  const cropped_sheaths = intersection(nut_sheaths(), linear_extrude({ height: 60 }, base2d));
+  return difference(union(walls, base, cropped_sheaths), nut_holes());
+}
+
+function regular_polygon(radius, sides) {
+  points = [];
+  for (let i = 0; i < sides; i++) {
+    points.push([radius * cos(360 * i / sides), radius * sin(360 * i / sides)]);
+  }
+  console.log(points);
+  return polygon(points);
+}
+
 function screw_hole() {
   return translate([0, 0, 3/2],
     cylinder({r: 1.5, h: 60, center: true, fn: wall_sphere_n}));
 }
 
-function screw_holes(params) {
-  console.log("screw_holes");
+function nut_hole() {
+  return translate([0, 0, -60 -10], linear_extrude({ height: 60 }, regular_polygon(3.1, 6)));
+}
+
+function nut_sheath() {
+  return translate([0, 0, -60 -10 + 1.5], linear_extrude({ height: 60 }, regular_polygon(3.1 + 1.5, 6)));
+}
+
+function screw_position_place(shape) {
   return union(Array.from(function*() {
-    yield key_place(4 + 1/2, 1/2, screw_hole());
-    yield key_place(4 + 1/2, 3 + 1/2, screw_hole());
-    yield thumb_place(2, -1/2, screw_hole());
+    yield key_place(4 + 1/2, 1/2, shape);
+    yield key_place(4 + 1/2, 3 + 1/2, shape);
+    yield thumb_place(2, -1/2, shape);
 
     if (params.extra_screw) {
-      yield key_place(0 + 1/2, 1 + 1/2, screw_hole());
+      yield key_place(0 + 1/2, 1 + 1/2, shape);
     }
   }()));
+}
+
+function screw_holes() {
+  return screw_position_place(screw_hole());
+}
+
+function nut_holes() {
+  return screw_position_place(nut_hole());
+}
+
+function nut_sheaths() {
+  return screw_position_place(nut_sheath());
 }
 
 function led_hole() {
@@ -1560,6 +1774,11 @@ function trrs_box_hole() {
     cube({size: [14, 14, 7], center: true}));
 }
 
+function extended_trrs_cutout() {
+  return translate([-30, 50, 7], rotate(90, [1, 0, 0],
+    cylinder({r: 4, h: 20, center:true, fn: 20})));
+}
+
 function trrs_cutout() {
   return key_place(1/2, 0, trrs_hole(), trrs_box_hole());
 }
@@ -1598,6 +1817,19 @@ function teensy_support() {
           cube({size: [18, 30.5, teensy_pcb_thickness], center: true})))));
 }
 
+function extended_usb_cutout(params) {
+  /*
+     Designed for the Adafruit Micro USB panel mount:
+     https://cdn-shop.adafruit.com/product-files/3258/Micro+USB.pdf
+  */
+  const screw_hole = cylinder({r: 1.75, h: 20, center:true, fn: 20});
+  const connector_face = cube({size: [9.5, 5, 20], center: true});
+  return translate([-10, 50, 7], rotate(90, [1, 0, 0],
+    translate([-8.65, 0, 0], screw_hole),
+    translate([8.65, 0, 0], screw_hole),
+    connector_face));
+}
+
 function usb_cutout() {
   const hole_height = 6.2;
   const side_radius = hole_height/2;
@@ -1631,6 +1863,22 @@ function dactyl_bottom_right(params) {
         translate([0, 0, -5], cube({size: [1000, 1000, 10], center: true})),
         screw_holes(params))),
     usb_cutout());
+
+}
+function dactyl_extended_bottom_right(params) {
+  return difference(
+    dactyl_extended_bottom_left(),
+    extended_usb_cutout(params)
+  );
+}
+
+function dactyl_extended_bottom_left(params) {
+  return difference(
+    extended_bottom_plate(),
+    new_case(),
+    extended_trrs_cutout(),
+    screw_holes()
+  );
 }
 
 function dactyl_bottom_left(params) {
@@ -1708,12 +1956,16 @@ function getParameterDefinitions() {
       values: [
         "dactyl_bottom_right",
         "dactyl_bottom_left",
+        "dactyl_extended_bottom_right",
+        "dactyl_extended_bottom_left",
         "dactyl_top_right",
         "dactyl_top_left",
         ],
       captions: [
         "bottom right",
         "bottom left",
+        "extended bottom right",
+        "extended bottom left",
         "top right",
         "top left",
       ],
@@ -1729,6 +1981,10 @@ function main(params) {
       return dactyl_bottom_right(params);
     case "dactyl_bottom_left":
       return dactyl_bottom_left(params);
+    case "dactyl_extended_bottom_right":
+      return dactyl_extended_bottom_right(params);
+    case "dactyl_extended_bottom_left":
+      return dactyl_extended_bottom_left(params);
     case "dactyl_top_right":
       return dactyl_top_right(params);
     case "dactyl_top_left":
