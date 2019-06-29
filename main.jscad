@@ -1866,10 +1866,11 @@ function dactyl_bottom_right(params) {
 
 }
 function dactyl_extended_bottom_right(params) {
-  return difference(
-    dactyl_extended_bottom_left(),
-    extended_usb_cutout(params)
-  );
+  return mirror([-1, 0, 0], (
+    difference(
+      dactyl_extended_bottom_left(),
+      extended_usb_cutout(params)
+  )));
 }
 
 function dactyl_extended_bottom_left(params) {
