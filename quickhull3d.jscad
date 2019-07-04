@@ -1279,19 +1279,30 @@ class QuickHull {
   }
 }
 
-quickhull3d = function(...objects) {
+points_of_shape = function(...objects) {
+    // OpenJSCAD glitches if two points are most but not quite touching. To
+    // workaround this, round all the points to this precision. 
+    var precision = 1000;
     let included = {};
     let points = [];
     for (const obj of objects) {
         for (const polygon of obj.polygons) {
             for (const vertex of polygon.vertices) {
-                if (included[vertex])
+		const point = [vertex.pos.x, vertex.pos.y, vertex.pos.z];
+		for (let d = 0; d < 3; d++) {
+		    point[d] = Math.round(point[d] * precision) / precision;
+		}
+                if (included[point])
                     continue;
-                points.push([vertex.pos.x, vertex.pos.y, vertex.pos.z]);
-                included[vertex] = true;
+                points.push(point);
+                included[point] = true;
             }
         }
     }
+    return points;
+}
+
+hull3d_of_points = function(points) {
     const hull = new QuickHull(points);
     hull.build();
     var faces = hull.collectFaces(true);
@@ -1303,4 +1314,8 @@ quickhull3d = function(...objects) {
         polygons: faces
     };
     return polyhedron(options);
+}
+
+quickhull3d = function(...objects) {
+    return hull3d_of_points(points_of_shape(...objects));
 }

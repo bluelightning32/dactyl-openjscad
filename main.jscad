@@ -214,10 +214,19 @@ function projection(shape) {
       }
     }
   }
+  const converted_paths2 = [];
   for (let i = 0; i < converted_paths.length; i++) {
-    converted_paths[i] = safe_polygon(converted_paths[i].flatten());
+    try {
+      converted_paths2.push(safe_polygon(converted_paths[i].flatten()));
+    } catch(e) {
+      if (e.message != "Degenerate polygon!" &&
+          e.message != "CAG shape needs at least 3 points") {
+        throw e;
+      }
+    }
   }
-  return tree_union(converted_paths);
+  const result = tree_union(converted_paths2);
+  return result;
 }
 
 /* util.clj */
@@ -599,7 +608,7 @@ function thumb_connectors() {
   }()));
 }
 
-function thumb() {
+function thumb(params) {
   console.log("thumb");
   const plate = params.key_switch == "cherry" ?  old_single_plate() : single_plate();
   return union(
@@ -1475,96 +1484,96 @@ function bottom_walls() {
     const front_wall = tree_union(Array.from(function*() {
       for (const x of range(2, 5)) {
         yield shift_hull3d([0, 0, -50],
-          case_place(x - 1/2, 4, translate([0, 1, 1], wall_sphere_bottom_front())),
-          case_place(x + 1/2, 4, translate([0, 1, 1], wall_sphere_bottom_front())));
+          case_place(x - 1/2, 4, translate([0, 0.5, 1], wall_sphere_bottom_front())),
+          case_place(x + 1/2, 4, translate([0, 0.5, 1], wall_sphere_bottom_front())));
       }
       yield shift_hull3d([0, 0, -50],
-        case_place(right_wall_column, 4, translate([0, 1, 1], wall_sphere_bottom_front())),
-        case_place(right_wall_column - 1, 4, translate([0, 1, 1], wall_sphere_bottom_front())));
+        case_place(right_wall_column, 4, translate([-0.5, 0.5, 1], wall_sphere_bottom_front())),
+        case_place(right_wall_column - 1, 4, translate([-0.5, 0.5, 1], wall_sphere_bottom_front())));
       yield shift_hull3d([0, 0, -50],
-        case_place(4 + 1/2, 4, translate([0, 1, 1], wall_sphere_bottom_front())),
-        case_place(right_wall_column - 1, 4, translate([0, 1, 1], wall_sphere_bottom_front())));
+        case_place(4 + 1/2, 4, translate([0, 0.5, 1], wall_sphere_bottom_front())),
+        case_place(right_wall_column - 1, 4, translate([0, 0.5, 1], wall_sphere_bottom_front())));
     }()));
     const right_wall = tree_union(Array.from(function*() {
       for (x of range(0, 4)) {
         yield shift_hull3d([0, 0, -50],
-          case_place(right_wall_column, x, translate([-1, 0, 1], wall_sphere_bottom(1/2))),
-          case_place(right_wall_column, x + 1, translate([-1, 0, 1], wall_sphere_bottom(1/2))));
+          case_place(right_wall_column, x, translate([-0.5, 0, 1], wall_sphere_bottom(1/2))),
+          case_place(right_wall_column, x + 1, translate([-0.5, 0, 1], wall_sphere_bottom(1/2))));
       }
       yield shift_hull3d([0, 0, -50],
-        case_place(right_wall_column, 0, translate([-1, 0, 1], wall_sphere_bottom(1/2))),
-        case_place(right_wall_column, 0.02, translate([-1, -1, 1], wall_sphere_bottom(1))));
+        case_place(right_wall_column, 0, translate([-0.5, 0, 1], wall_sphere_bottom(1/2))),
+        case_place(right_wall_column, 0.02, translate([-0.5, -0.5, 1], wall_sphere_bottom(1))));
       yield shift_hull3d([0, 0, -50],
-        case_place(right_wall_column, 4, translate([-1, 0, 1], wall_sphere_bottom(1/2))),
-        case_place(right_wall_column, 4, translate([0, 1, 1], wall_sphere_bottom(0))));
+        case_place(right_wall_column, 4, translate([-0.5, 0, 1], wall_sphere_bottom(1/2))),
+        case_place(right_wall_column, 4, translate([-0.5, 1, 1], wall_sphere_bottom(0))));
     }()));
     const back_wall = tree_union(Array.from(function*() {
       for (x of range(1, 6)) {
         yield shift_hull3d([0, 0, -50],
-          case_place(x - 1/2, 0, translate([0, -1, 1], wall_sphere_bottom_back())),
-          case_place(x + 1/2, 0, translate([0, -1, 1], wall_sphere_bottom_back())));
+          case_place(x - 1/2, 0, translate([0, -0.5, 1], wall_sphere_bottom_back())),
+          case_place(x + 1/2, 0, translate([0.5, -0.5, 1], wall_sphere_bottom_back())));
       }
       yield shift_hull3d([0, 0, -50],
-        case_place(left_wall_column, 0, translate([1, -1, 1], wall_sphere_bottom_back())),
-        case_place(left_wall_column + 1, 0, translate([0, -1, 1], wall_sphere_bottom_back())));
+        case_place(left_wall_column, 0, translate([0.5, -0.5, 1], wall_sphere_bottom_back())),
+        case_place(left_wall_column + 1, 0, translate([0, -0.5, 1], wall_sphere_bottom_back())));
     }()));
     const left_wall = union(Array.from(function*() {
       const place = case_place;
       yield shift_hull3d([0, 0, -50],
-        place(left_wall_column, 0, translate([1, -1, 1], wall_sphere_bottom_back())),
-        place(left_wall_column, 1, translate([1, 0, 1], wall_sphere_bottom_back())));
+        place(left_wall_column, 0, translate([0.5, -1, 1], wall_sphere_bottom_back())),
+        place(left_wall_column, 1, translate([0.5, 0, 1], wall_sphere_bottom_back())));
       yield shift_hull3d([0, 0, -50],
-        place(left_wall_column, 1, translate([1, 0, 1], wall_sphere_bottom_back())),
-        place(left_wall_column, 2, translate([1, 0, 1], wall_sphere_bottom_back())));
+        place(left_wall_column, 1, translate([0.5, 0, 1], wall_sphere_bottom_back())),
+        place(left_wall_column, 2, translate([0.5, 0, 1], wall_sphere_bottom_back())));
       yield shift_hull3d([0, 0, -50],
-        place(left_wall_column, 2, translate([1, 0, 1], wall_sphere_bottom_back())),
-        place(left_wall_column, 1.6666,  translate([1, 0, 1], wall_sphere_bottom_front())));
+        place(left_wall_column, 2, translate([0.5, 0, 1], wall_sphere_bottom_back())),
+        place(left_wall_column, 1.6666,  translate([0.5, 0, 1], wall_sphere_bottom_front())));
     }()));
     const thumb_back_wall = union(Array.from(function*() {
       yield shift_hull3d([0, 0, -50],
-        thumb_place(1/2, thumb_back_y, translate([0, -1, 1], wall_sphere_bottom_back())),
-        thumb_place(3/2, thumb_back_y, translate([0, -1, 1], wall_sphere_bottom_back())));
+        thumb_place(1/2, thumb_back_y, translate([0, -0.5, 1], wall_sphere_bottom_back())),
+        thumb_place(3/2, thumb_back_y, translate([0, -0.5, 1], wall_sphere_bottom_back())));
       yield shift_hull3d([0, 0, -50],
-        thumb_place(5/2 + 0.05, thumb_back_y, translate([1, -1, 1], wall_sphere_bottom_back())),
-        thumb_place(3/2, thumb_back_y, translate([0, -1, 1], wall_sphere_bottom_back())));
+        thumb_place(5/2 + 0.05, thumb_back_y, translate([0.5, -0.5, 1], wall_sphere_bottom_back())),
+        thumb_place(3/2, thumb_back_y, translate([0, -0.5, 1], wall_sphere_bottom_back())));
       yield shift_hull3d([0, 0, -50],
-        thumb_place(1/2, thumb_back_y, translate([0, -1, 1], wall_sphere_bottom_back())),
-        case_place(left_wall_column, 1.6666, translate([1, 0, 1], wall_sphere_bottom_front())));
+        thumb_place(1/2, thumb_back_y, translate([0, -0.5, 1], wall_sphere_bottom_back())),
+        case_place(left_wall_column, 1.6666, translate([0.5, 0, 1], wall_sphere_bottom_front())));
     }()));
     const thumb_left_wall = union(Array.from(function*() {
       yield shift_hull3d([0, 0, -50],
-       thumb_place(thumb_left_wall_column, thumb_back_y, translate([1, -1, 1], wall_sphere_bottom_back())),
-       thumb_place(thumb_left_wall_column, 0, translate([1, 0, 1], wall_sphere_bottom_back())));
+       thumb_place(thumb_left_wall_column, thumb_back_y, translate([0.5, -1, 1], wall_sphere_bottom_back())),
+       thumb_place(thumb_left_wall_column, 0, translate([0.5, 0, 1], wall_sphere_bottom_back())));
       yield shift_hull3d([0, 0, -50],
-       thumb_place(thumb_left_wall_column, 0, translate([1, 0, 1], wall_sphere_bottom_back())));
+       thumb_place(thumb_left_wall_column, 0, translate([0.5, 0, 1], wall_sphere_bottom_back())));
       yield shift_hull3d([0, 0, -50],
-       thumb_place(thumb_left_wall_column, 0, translate([1, 0, 1], wall_sphere_bottom_back())),
-       thumb_place(thumb_left_wall_column, -1, translate([1, 0, 1], wall_sphere_bottom_back())));
+       thumb_place(thumb_left_wall_column, 0, translate([0.5, 0, 1], wall_sphere_bottom_back())),
+       thumb_place(thumb_left_wall_column, -1, translate([0.5, 0, 1], wall_sphere_bottom_back())));
       yield shift_hull3d([0, 0, -50],
-       thumb_place(thumb_left_wall_column, -1, translate([1, 0, 1], wall_sphere_bottom_back())));
+       thumb_place(thumb_left_wall_column, -1, translate([0.5, 0, 1], wall_sphere_bottom_back())));
       yield shift_hull3d([0, 0, -50],
-       thumb_place(thumb_left_wall_column, -1, translate([1, 0, 1], wall_sphere_bottom_back())),
-       thumb_place(thumb_left_wall_column, -1 + 0.07, translate([1, 1, 1], wall_sphere_bottom_front())));
+       thumb_place(thumb_left_wall_column, -1, translate([0.5, 0, 1], wall_sphere_bottom_back())),
+       thumb_place(thumb_left_wall_column, -1 + 0.07, translate([0.5, 0.5, 1], wall_sphere_bottom_front())));
     }()));
     const thumb_front_wall = union(Array.from(function*() {
       yield shift_hull3d([0, 0, -50],
-        thumb_place(5/2 + 0.05, thumb_front_row, translate([1, 1, 1], wall_sphere_bottom_front())),
-        thumb_place(3/2 + 0.05, thumb_front_row, translate([0, 1, 1], wall_sphere_bottom_front())));
+        thumb_place(5/2 + 0.05, thumb_front_row, translate([1, 0.5, 1], wall_sphere_bottom_front())),
+        thumb_place(3/2 + 0.05, thumb_front_row, translate([0, 0.5, 1], wall_sphere_bottom_front())));
       yield shift_hull3d([0, 0, -50],
-        thumb_place(1/2 + 0.05, thumb_front_row, translate([0, 1, 1], wall_sphere_bottom_front())),
-        thumb_place(3/2 + 0.05, thumb_front_row, translate([0, 1, 1], wall_sphere_bottom_front())));
+        thumb_place(1/2 + 0.05, thumb_front_row, translate([0, 0.5, 1], wall_sphere_bottom_front())),
+        thumb_place(3/2 + 0.05, thumb_front_row, translate([0, 0.5, 1], wall_sphere_bottom_front())));
       yield shift_hull3d([0, 0, -50],
-        thumb_place(thumb_right_wall, thumb_front_row, translate([-1, 1, 1], wall_sphere_bottom_front())),
-        thumb_place(1/2 + 0.05, thumb_front_row, translate([0, 1, 1], wall_sphere_bottom_front())));
+        thumb_place(thumb_right_wall, thumb_front_row, translate([-1, 0.5, 1], wall_sphere_bottom_front())),
+        thumb_place(1/2 + 0.05, thumb_front_row, translate([0, 0.5, 1], wall_sphere_bottom_front())));
     }()));
     const thumb_inside = union(Array.from(function*() {
       yield shift_hull3d([0, 0, -50],
-        case_place(2 - 1/2, 4, translate([0, 1, 1], wall_sphere_bottom_front())),
-        case_place(0.7, 4, translate([0, 1, 1], wall_sphere_bottom_front())));
+        case_place(2 - 1/2, 4, translate([0, 0.5, 1], wall_sphere_bottom_front())),
+        case_place(0.7, 4, translate([-0.5, 0.5, 1], wall_sphere_bottom_front())));
 
       yield shift_hull3d([0, 0, -50],
-        thumb_place(thumb_right_wall, thumb_front_row, translate([-1, 1, 1], wall_sphere_bottom_front())),
-        case_place(0.7, 4, translate([0, 1, 1], wall_sphere_bottom_front())));
+        thumb_place(thumb_right_wall, thumb_front_row, translate([-0.5, 0.5, 1], wall_sphere_bottom_front())),
+        case_place(0.7, 4, translate([-0.5, 0.5, 1], wall_sphere_bottom_front())));
     }()));
     yield front_wall;
     yield right_wall;
@@ -1618,7 +1627,7 @@ function remove_holes_2d(shape) {
   return tree_union(keep);
 }
 
-function extended_bottom_plate() {
+function extended_bottom_plate(params) {
   // cut off the parts of the walls that extend past 0 z.
   const walls = difference(bottom_walls(), translate([0, 0, -100], cube({size: [200, 200, 200], center:true})));
   // Just in case the walls aren't completely vertical, get the bottom 1mm of the walls.
@@ -1627,8 +1636,8 @@ function extended_bottom_plate() {
   // Fill in the parameter.
   const base2d = remove_holes_2d(bottom_parameter2d);
   const base = linear_extrude({ height: 1.5 }, base2d);
-  const cropped_sheaths = intersection(nut_sheaths(), linear_extrude({ height: 60 }, base2d));
-  return difference(union(walls, base, cropped_sheaths), nut_holes());
+  const cropped_sheaths = intersection(nut_sheaths(params), linear_extrude({ height: 60 }, base2d));
+  return difference(union(walls, base, cropped_sheaths), nut_holes(params));
 }
 
 function regular_polygon(radius, sides) {
@@ -1653,7 +1662,7 @@ function nut_sheath() {
   return translate([0, 0, -60 -10 + 1.5], linear_extrude({ height: 60 }, regular_polygon(3.1 + 1.5, 6)));
 }
 
-function screw_position_place(shape) {
+function screw_position_place(params, shape) {
   return union(Array.from(function*() {
     yield key_place(4 + 1/2, 1/2, shape);
     yield key_place(4 + 1/2, 3 + 1/2, shape);
@@ -1665,16 +1674,16 @@ function screw_position_place(shape) {
   }()));
 }
 
-function screw_holes() {
-  return screw_position_place(screw_hole());
+function screw_holes(params) {
+  return screw_position_place(params, screw_hole());
 }
 
-function nut_holes() {
-  return screw_position_place(nut_hole());
+function nut_holes(params) {
+  return screw_position_place(params, nut_hole());
 }
 
-function nut_sheaths() {
-  return screw_position_place(nut_sheath());
+function nut_sheaths(params) {
+  return screw_position_place(params, nut_sheath());
 }
 
 function led_hole() {
@@ -1817,7 +1826,7 @@ function teensy_support() {
           cube({size: [18, 30.5, teensy_pcb_thickness], center: true})))));
 }
 
-function extended_usb_cutout(params) {
+function extended_usb_cutout() {
   /*
      Designed for the Adafruit Micro USB panel mount:
      https://cdn-shop.adafruit.com/product-files/3258/Micro+USB.pdf
@@ -1866,20 +1875,23 @@ function dactyl_bottom_right(params) {
 
 }
 function dactyl_extended_bottom_right(params) {
-  return mirror([-1, 0, 0], (
+  return mirror([-1, 0, 0],
     difference(
-      dactyl_extended_bottom_left(),
-      extended_usb_cutout(params)
-  )));
+      dactyl_extended_bottom_left(params),
+      extended_usb_cutout()
+  ));
 }
 
 function dactyl_extended_bottom_left(params) {
-  return difference(
-    extended_bottom_plate(),
-    new_case(),
+  const top = slice_and_union(new_case());
+  const result = color([0, 1, 0], difference(
+    extended_bottom_plate(params),
     extended_trrs_cutout(),
-    screw_holes()
-  );
+    screw_holes(params),
+    top,
+    translate([0, 0, 0.4], top)
+  ));
+  return result;
 }
 
 function dactyl_bottom_left(params) {
@@ -1900,7 +1912,7 @@ function dactyl_top_right(params) {
   let add = [
     key_holes(params),
     connectors(),
-    thumb(),
+    thumb(params),
     new_case(),
   ];
   if (params.teensy_support) {
@@ -1921,7 +1933,7 @@ function dactyl_top_left(params) {
   let add = [
     key_holes(params),
     connectors(),
-    thumb(),
+    thumb(params),
     new_case()
   ];
   let remove = [
@@ -1939,7 +1951,7 @@ function dactyl_top_left(params) {
 
 function getParameterDefinitions() {
   return [
-    { name: 'draft', type: 'checkbox', checked: true, caption: 'Draft (non-draft takes 10 minutes)' }, 
+    { name: 'draft', type: 'checkbox', checked: false, caption: 'Draft (non-draft takes 10 minutes)' }, 
     { name: 'extra_screw', type: 'checkbox', checked: true, caption: 'Extended bottom screw hole' },
     { name: 'led_holes', type: 'checkbox', checked: true, caption: 'Push holes for leds' },
     { name: 'teensy_support', type: 'checkbox', checked: false, caption: 'Add support for teensy board' },
@@ -1977,7 +1989,7 @@ function getParameterDefinitions() {
 function main(params) {
   draft_mode = params.draft;
   gl_vec3();
-  switch (params.part) {
+  switch (params.part) {                                                                                                                                                    
     case "dactyl_bottom_right":
       return dactyl_bottom_right(params);
     case "dactyl_bottom_left":
